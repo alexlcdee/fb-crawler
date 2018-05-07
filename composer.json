@@ -1,0 +1,24 @@
+{
+  "name": "alexlcdee/fb-crawler",
+  "description": "Facebook Bot Tracker",
+  "minimum-stability": "stable",
+  "license": "proprietary",
+  "authors": [
+    {
+      "name": "Alexander Larkin",
+      "email": "info@alexlcdee.ru"
+    }
+  ],
+  "require": {
+    "phpunit/phpunit": "7.1.5",
+    "guzzlehttp/guzzle": "6.3.3",
+    "symfony/dom-crawler": "v4.0.9",
+    "symfony/css-selector": "v4.0.9"
+  },
+  "autoload": {
+    "psr-4": {
+      "App\\": "src/",
+      "App\\Tests\\": "tests/"
+    }
+  }
+}
