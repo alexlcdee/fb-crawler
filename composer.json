@@ -1,6 +1,6 @@
 {
   "name": "alexlcdee/fb-crawler",
-  "description": "Facebook Bot Tracker",
+  "description": "Facebook Data Crawler",
   "minimum-stability": "stable",
   "license": "proprietary",
   "authors": [
