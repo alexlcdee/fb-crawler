@@ -4,6 +4,7 @@ namespace App\FacebookCrawler;
 
 
 use GuzzleHttp\ClientInterface;
+use GuzzleHttp\Exception\GuzzleException;
 use GuzzleHttp\Psr7\Uri;
 use Symfony\Component\DomCrawler\Crawler;
 
@@ -71,7 +72,12 @@ class Posts
      */
     private function retrievePosts($url, $postSelector, callable $next)
     {
-        $response = $this->client->request('GET', $url);
+        try {
+            $response = $this->client->request('GET', $url);
+        } catch (GuzzleException $exception) {
+            return [];
+        }
+
         $body = $response->getBody()->getContents();
 
         $page = new Crawler($body);
@@ -114,7 +120,12 @@ class Posts
         });
         if ($commentPageLink->count()) {
             $url = $commentPageLink->attr('href');
-            $response = $this->client->request('GET', $url);
+            try {
+                $response = $this->client->request('GET', $url);
+            } catch (GuzzleException $exception) {
+                return [];
+            }
+
             $commentsPage = new Crawler($response->getBody()->getContents());
             $commentsContainer = $commentsPage->filter('div')->reduce(function (Crawler $node) {
                 return stripos($node->attr('id'), 'ufi_') !== false;
@@ -123,7 +134,6 @@ class Posts
                 $comments = $this->crawlComments($commentsPage->first());
                 $likes = $this->crawlLikes($commentsPage->first());
             }
-//            file_put_contents(__DIR__.'/../../www/pages/'.md5($url).'.html', $response->getBody()->getContents());
         }
 
         return [
@@ -148,10 +158,20 @@ class Posts
                 $nameNode = $comment->filter('h3 a')->first();
                 $textNode = $comment->filter('div > div > div')->first();
 
+                $userUrl = '';
+                if ($nameNode->count()) {
+                    $url = new Uri($nameNode->attr('href'));
+                    $userUrl = $url->getPath();
+                    if ($url->getPath() === '/profile.php') {
+                        parse_str($url->getQuery(), $queryParams);
+                        $userUrl = (new Uri($url->getPath()))->withQuery('id=' . $queryParams['id']);
+                    }
+                }
+
                 return [
-                    'commentatorName' => $nameNode->count() ? $nameNode->text() : '',
-                    'commentatorUrl'  => $nameNode->count() ? (new Uri($nameNode->attr('href')))->getPath() : '',
-                    'comment'         => $textNode->count() ? $textNode->text() : '',
+                    'userName' => $nameNode->count() ? $nameNode->text() : '',
+                    'userUrl'  => (string)$userUrl,
+                    'comment'  => $textNode->count() ? $textNode->text() : '',
                 ];
             });
     }
@@ -167,14 +187,26 @@ class Posts
             return stripos($node->attr('id'), 'sentence_') !== false;
         });
         if ($reactionsContainer->filter('a')->count()) {
-            $response = $this->client->request('GET', $reactionsContainer->filter('a')->first()->attr('href'));
+            try {
+                $response = $this->client->request('GET', $reactionsContainer->filter('a')->first()->attr('href'));
+            } catch (GuzzleException $exception) {
+                return [];
+            }
+
             $body = $response->getBody()->getContents();
             $reactionsPage = new Crawler($body);
 
             return $reactionsPage->filter('h3 a')->each(function (Crawler $reaction) {
+                $url = new Uri($reaction->attr('href'));
+                $userUrl = $url->getPath();
+                if ($url->getPath() === '/profile.php') {
+                    parse_str($url->getQuery(), $queryParams);
+                    $userUrl = (new Uri($url->getPath()))->withQuery('id=' . $queryParams['id']);
+                }
+
                 return [
-                    'link' => $reaction->attr('href'),
-                    'name' => $reaction->text(),
+                    'userUrl' => $userUrl,
+                    'name'    => $reaction->text(),
                 ];
             });
         }
@@ -189,7 +221,11 @@ class Posts
      */
     private function retrieveYearLinks($userUrl)
     {
-        $response = $this->client->request('GET', $userUrl);
+        try {
+            $response = $this->client->request('GET', $userUrl);
+        } catch (GuzzleException $exception) {
+            return [];
+        }
 
         $page = new Crawler($response->getBody()->getContents());
 
@@ -200,7 +236,6 @@ class Posts
 
             return stripos($href, 'yearSectionsYears') ? $href : null;
         });
-
 
         return array_filter($links);
     }

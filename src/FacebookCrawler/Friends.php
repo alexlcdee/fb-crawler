@@ -82,10 +82,17 @@ class Friends
             $image = $crawler->filter('img.ba');
             $photo = $image->count() ? $image->first()->attr('src') : '';
 
+            $url = new Uri($url);
+            $userUrl = $url->getPath();
+            if ($url->getPath() === '/profile.php') {
+                parse_str($url->getQuery(), $queryParams);
+                $userUrl = (new Uri($url->getPath()))->withQuery('id=' . $queryParams['id']);
+            }
+
             return [
                 'id'        => $friendUriQuery['uid'],
                 'name'      => $node->text(),
-                'openerUrl' => $url,
+                'openerUrl' => (string)$userUrl,
                 'photo'     => $photo,
             ];
         });
