@@ -94,6 +94,30 @@ HTML;
         $authenticator->authenticate();
     }
 
+    public function test_authenticate_return_previous_result_when_already_authenticated()
+    {
+        /** @var ClientInterface|MockObject $client */
+        $client = $this->getMockBuilder(ClientInterface::class)->getMock();
+
+        $body1 = <<<HTML
+<form action="test" id="login_form">
+    <input type="hidden" name="f1" value="f1">
+    <input type="hidden" name="f2" value="f2">
+    <input type="hidden" name="f3" value="f3">
+</form>
+HTML;
+        $body2 = '<div></div>';
+        $client->expects($this->exactly(2))->method('request')->willReturn(
+            $this->createResponse($body1),
+            $this->createResponse($body2)
+        );
+
+        $authenticator = new Authenticator($client, 'test', 'test');
+
+        $this->assertEquals(true, $authenticator->authenticate());
+        $this->assertEquals(true, $authenticator->authenticate());
+    }
+
     private function createResponse($body)
     {
         return new Response(200, [], $body);
