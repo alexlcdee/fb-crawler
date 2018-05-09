@@ -14,35 +14,32 @@ class AuthenticatorTest extends TestCase
     {
         /** @var ClientInterface|MockObject $client */
         $client = $this->getMockBuilder(ClientInterface::class)->getMock();
-        $client->method('request')->willReturnCallback(function ($method) {
-            if ($method === 'GET') {
-                $html = <<<HTML
+
+        $body1 = <<<HTML
 <form action="test" id="login_form">
     <input type="hidden" name="f1" value="f1">
     <input type="hidden" name="f2" value="f2">
     <input type="hidden" name="f3" value="f3">
 </form>
 HTML;
-            } else {
-                $html = '<div></div>';
-            }
+        $body2 = '<div></div>';
+        $client->method('request')->willReturn(
+            $this->createResponse($body1),
+            $this->createResponse($body2)
+        );
 
-            return new Response(200, [], $html);
-        });
-        $authenticator = new Authenticator($client);
+        $authenticator = new Authenticator($client, 'test', 'test');
 
-        $status = $authenticator->authenticate('test', 'test');
+        $status = $authenticator->authenticate();
 
         $this->assertEquals(true, $status);
     }
 
     public function test_return_false_on_not_authenticated()
     {
-        $response = '';
         /** @var ClientInterface|MockObject $client */
         $client = $this->getMockBuilder(ClientInterface::class)->getMock();
-        $client->method('request')->willReturnCallback(function ($method, $url) use (&$response) {
-            $html = <<<HTML
+        $body = <<<HTML
 <form action="test" id="login_form">
     <input type="hidden" name="f1" value="f1">
     <input type="hidden" name="f2" value="f2">
@@ -50,12 +47,55 @@ HTML;
 </form>
 HTML;
 
-            return new Response(200, [], $html);
-        });
-        $authenticator = new Authenticator($client);
+        $client->method('request')->willReturn(
+            $this->createResponse($body),
+            $this->createResponse($body)
+        );
+        $authenticator = new Authenticator($client, 'login', 'password');
 
-        $status = $authenticator->authenticate('test', 'test');
+        $status = $authenticator->authenticate();
 
         $this->assertEquals(false, $status);
+    }
+
+    public function test_fields_is_sent()
+    {
+        /** @var ClientInterface|MockObject $client */
+        $client = $this->getMockBuilder(ClientInterface::class)->getMock();
+        $client->method('request')->willReturnCallback(function ($method, $url, $config) {
+            if (strtolower($method) === 'get') {
+                $html = <<<HTML
+<form action="/test_login.php" id="login_form">
+    <input type="hidden" name="f1" value="f1">
+    <input type="hidden" name="f2" value="f2">
+    <input type="hidden" name="f3" value="f3">
+</form>
+HTML;
+
+                return new Response(200, [], $html);
+            }
+
+            $this->assertEquals('post', strtolower($method));
+            $this->assertEquals('/test_login.php', $url);
+            $this->assertArrayHasKey('form_params', $config);
+            $this->assertEquals([
+                'f1'    => 'f1',
+                'f2'    => 'f2',
+                'f3'    => 'f3',
+                'email' => 'test_login',
+                'pass'  => 'test_password',
+                'login' => 'Log In',
+            ], $config['form_params']);
+
+            return new Response(200, [], '<div></div>');
+        });
+
+        $authenticator = new Authenticator($client, 'test_login', 'test_password');
+        $authenticator->authenticate();
+    }
+
+    private function createResponse($body)
+    {
+        return new Response(200, [], $body);
     }
 }

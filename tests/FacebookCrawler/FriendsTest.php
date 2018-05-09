@@ -87,7 +87,7 @@ HTML;
             ],
         ];
 
-        $this->assertEquals($result, $crawler->getFriendsList('', ''));
+        $this->assertEquals($result, $crawler->getFriendsList());
     }
 
     private function createResponse($body)
@@ -112,6 +112,6 @@ HTML;
 
         $this->expectException(NotAuthenticatedException::class);
 
-        $crawler->getFriendsList('test', 'test');
+        $crawler->getFriendsList();
     }
 }

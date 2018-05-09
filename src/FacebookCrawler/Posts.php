@@ -24,15 +24,13 @@ class Posts
     }
 
     /**
-     * @param string $login
-     * @param string $password
      * @param string $userUrl
      * @return array
      * @throws \GuzzleHttp\Exception\GuzzleException
      */
-    public function getPosts(string $login, string $password, string $userUrl)
+    public function getPosts(string $userUrl)
     {
-        if (!$this->authenticator->authenticate($login, $password)) {
+        if (!$this->authenticator->authenticate()) {
             throw new NotAuthenticatedException('Failed to authenticate request');
         }
 

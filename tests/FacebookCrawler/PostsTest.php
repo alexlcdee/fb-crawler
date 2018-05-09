@@ -49,7 +49,7 @@ HTML;
             'Post Text 2',
         ];
 
-        $this->assertEquals($result, $crawler->getPosts('test', 'test', 'link'));
+        $this->assertEquals($result, $crawler->getPosts('link'));
     }
 
     private function createResponse($body)
@@ -96,7 +96,7 @@ HTML;
             'Post Text 2',
         ];
 
-        $this->assertEquals($result, $crawler->getPosts('test', 'test', 'link'));
+        $this->assertEquals($result, $crawler->getPosts('link'));
     }
 
     public function test_throw_exception_on_not_authenticated()
@@ -116,6 +116,6 @@ HTML;
 
         $this->expectException(NotAuthenticatedException::class);
 
-        $crawler->getPosts('test', 'test', 'test');
+        $crawler->getPosts('test');
     }
 }

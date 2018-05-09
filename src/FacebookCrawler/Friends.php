@@ -25,14 +25,12 @@ class Friends
     }
 
     /**
-     * @param string $login
-     * @param string $password
      * @return array
      * @throws \GuzzleHttp\Exception\GuzzleException
      */
-    public function getFriendsList(string $login, string $password)
+    public function getFriendsList()
     {
-        if (!$this->authenticator->authenticate($login, $password)) {
+        if (!$this->authenticator->authenticate()) {
             throw new NotAuthenticatedException('Failed to authenticate request');
         }
 

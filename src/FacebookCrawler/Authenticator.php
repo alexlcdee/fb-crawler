@@ -4,7 +4,6 @@ namespace App\FacebookCrawler;
 
 
 use GuzzleHttp\ClientInterface;
-use Psr\Http\Message\ResponseInterface;
 use Symfony\Component\DomCrawler\Crawler;
 
 class Authenticator
@@ -15,50 +14,66 @@ class Authenticator
     private $client;
 
     private $isAuthenticated = false;
+    /**
+     * @var string
+     */
+    private $login;
+    /**
+     * @var string
+     */
+    private $password;
 
-    public function __construct(ClientInterface $client)
+    public function __construct(ClientInterface $client, string $login, string $password)
     {
         $this->client = $client;
+        $this->login = $login;
+        $this->password = $password;
     }
 
     /**
-     * @param string $login
-     * @param string $password
      * @return bool
      * @throws \GuzzleHttp\Exception\GuzzleException
      */
-    public function authenticate(string $login, string $password)
+    public function authenticate()
     {
         if (!$this->isAuthenticated) {
-            $this->isAuthenticated = true;
-            [$fields, $loginUrl] = $this->getAuthParams();
+            $guzzleResponse = $this->client->request('GET', '/');
+            $responseBody = $guzzleResponse->getBody()->getContents();
+            if (!$this->hasLoginForm($responseBody)) {
+                $this->isAuthenticated = true;
 
-            if ($loginUrl) {
-                $response = $this->client->request('POST', $loginUrl, [
-                    'form_params' => $fields + [
-                            'email' => $login,
-                            'pass'  => $password,
-                            'login' => 'Log In',
-                        ],
-                ]);
-                if ($this->hasLoginForm($response)) {
-                    $this->isAuthenticated = false;
-                }
+                return true;
             }
+
+            [$fields, $loginUrl] = $this->getAuthParams($responseBody);
+
+            $response = $this->client->request('POST', $loginUrl, [
+                'form_params' => $fields + [
+                        'email' => $this->login,
+                        'pass'  => $this->password,
+                        'login' => 'Log In',
+                    ],
+            ]);
+
+            if (!$this->hasLoginForm($response->getBody()->getContents())) {
+                $this->isAuthenticated = true;
+
+                return true;
+            }
+
+            return false;
         }
 
         return $this->isAuthenticated;
     }
 
     /**
+     * @param string $responseBody
      * @return array
-     * @throws \GuzzleHttp\Exception\GuzzleException
      */
-    private function getAuthParams()
+    private function getAuthParams(string $responseBody)
     {
-        $guzzleResponse = $this->client->request('GET', '/login.php');
-
-        $crawler = new Crawler($guzzleResponse->getBody()->getContents());
+        $crawler = new Crawler($responseBody);
 
         $fields = [];
         $crawler->filter('#login_form input[type=hidden]')->each(function (Crawler $node) use (&$fields) {
@@ -71,8 +86,8 @@ class Authenticator
         return [$fields, $loginUrl];
     }
 
-    private function hasLoginForm(ResponseInterface $response)
+    private function hasLoginForm(string $responseBody)
     {
-        return (new Crawler($response->getBody()->getContents()))->filter('#login_form')->count();
+        return (new Crawler($responseBody))->filter('#login_form')->count();
     }
 }
