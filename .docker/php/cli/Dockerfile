@@ -10,5 +10,3 @@ RUN apt-get update \
 
 
 WORKDIR "/application"
-
-CMD ["php", "/application/src/cli.php"]

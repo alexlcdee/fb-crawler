@@ -32,15 +32,26 @@ services:
           - .:/application
           - ./.docker/php/fpm/php-ini-overrides.ini:/etc/php/7.0/fpm/conf.d/99-overrides.ini
 
-    php-cli:
+    parser1:
         build: .docker/php/cli
-        container_name: bot-track-cli
+        container_name: bot-track-parser-1
         working_dir: /application
         volumes:
           - .:/application
+        command: /bin/bash -c 'php /application/src/cli/parser.php'
+
+    parser2:
+        build: .docker/php/cli
+        container_name: bot-track-parser-2
+        working_dir: /application
+        volumes:
+          - .:/application
+        command: /bin/bash -c 'php /application/src/cli/parser.php'
 
     rabbit:
         image: rabbitmq
         container_name: bot-track-rabbit
         environment:
           - RABBITMQ_ERLANG_COOKIE='secret_cookie'
+          #- RABBITMQ_DEFAULT_USER='rabbit'
+          #- RABBITMQ_DEFAULT_PASS='rabbit'

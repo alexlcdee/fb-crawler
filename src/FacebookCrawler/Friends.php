@@ -3,6 +3,7 @@
 namespace App\FacebookCrawler;
 
 
+use App\Entities\Friend;
 use GuzzleHttp\ClientInterface;
 use GuzzleHttp\Psr7\Uri;
 use Symfony\Component\DomCrawler\Crawler;
@@ -25,7 +26,7 @@ class Friends
     }
 
     /**
-     * @return array
+     * @return Friend[]
      * @throws \GuzzleHttp\Exception\GuzzleException
      */
     public function getFriendsList()
@@ -34,7 +35,9 @@ class Friends
             throw new NotAuthenticatedException('Failed to authenticate request');
         }
 
-        return $this->retrieveFriends();
+        return array_map(function ($data) {
+            return Friend::fromArray($data);
+        }, $this->retrieveFriends());
     }
 
     /**
@@ -67,6 +70,10 @@ class Friends
         return $friends;
     }
 
+    /**
+     * @param Crawler $page
+     * @return array
+     */
     private function parseFriends(Crawler $page)
     {
         return $page->filter('a.bm')->each(function (Crawler $node) {
@@ -90,10 +97,10 @@ class Friends
             }
 
             return [
-                'id'        => $friendUriQuery['uid'],
-                'name'      => $node->text(),
-                'openerUrl' => (string)$userUrl,
-                'photo'     => $photo,
+                'id'      => $friendUriQuery['uid'],
+                'name'    => $node->text(),
+                'userUrl' => (string)$userUrl,
+                'photo'   => $photo,
             ];
         });
     }

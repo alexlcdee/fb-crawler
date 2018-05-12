@@ -3,6 +3,9 @@
 namespace App\FacebookCrawler;
 
 
+use App\Entities\Comment;
+use App\Entities\Like;
+use App\Entities\Post;
 use GuzzleHttp\ClientInterface;
 use GuzzleHttp\Exception\GuzzleException;
 use GuzzleHttp\Psr7\Uri;
@@ -46,7 +49,26 @@ class Posts
             }
         }
 
-        return array_filter($posts);
+        return array_map(function (array $post) {
+            return Post::fromArray([
+                'authorLink' => $post['authorLink'],
+                'authorName' => $post['authorName'],
+                'content'    => $post['content'],
+                'comments'   => array_map(function ($comment) {
+                    return Comment::fromArray([
+                        'authorLink' => $comment['userUrl'],
+                        'authorName' => $comment['userName'],
+                        'comment'    => $comment['comment'],
+                    ]);
+                }, $post['reactions']['comments']),
+                'likes'      => array_map(function ($like) {
+                    return Like::fromArray([
+                        'userUrl'  => $like['userUrl'],
+                        'userName' => $like['name'],
+                    ]);
+                }, $post['reactions']['likes']),
+            ]);
+        }, array_filter($posts));
     }
 
     /**
@@ -123,7 +145,10 @@ class Posts
             try {
                 $response = $this->client->request('GET', $url);
             } catch (GuzzleException $exception) {
-                return [];
+                return [
+                    'comments' => [],
+                    'likes'    => [],
+                ];
             }
 
             $commentsPage = new Crawler($response->getBody()->getContents());
