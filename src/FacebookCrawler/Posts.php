@@ -30,7 +30,7 @@ class Posts
 
     /**
      * @param string $userUrl
-     * @return array
+     * @return Post[]
      * @throws \GuzzleHttp\Exception\GuzzleException
      */
     public function getPosts(string $userUrl)
@@ -80,19 +80,20 @@ class Posts
     {
         return $this->retrievePosts(
             $url,
-            '#structured_composer_async_container .dg.dh.di > .dj.dk.dl',
+            function (Crawler $page) {
+                return $page->filter('#recent > div > div > div');
+            },
             [$this, 'retrieveRecentPosts']
         );
     }
 
     /**
      * @param $url
-     * @param $postSelector
+     * @param callable $postFilter
      * @param callable $next
      * @return array
-     * @throws \GuzzleHttp\Exception\GuzzleException
      */
-    private function retrievePosts($url, $postSelector, callable $next)
+    private function retrievePosts($url, callable $postFilter, callable $next)
     {
         try {
             $response = $this->client->request('GET', $url);
@@ -104,7 +105,7 @@ class Posts
 
         $page = new Crawler($body);
 
-        $posts = $page->filter($postSelector)->each(function (Crawler $node) use ($postSelector) {
+        $posts = $postFilter($page)->each(function (Crawler $node) {
             $authorNode = $node->filter('table h3 a');
             $authorUrl = new Uri($authorNode->first()->attr('href'));
 
@@ -274,7 +275,9 @@ class Posts
     {
         return $this->retrievePosts(
             $url,
-            '#structured_composer_async_container .bk.by.bz',
+            function (Crawler $page) {
+                return $page->filter('#structured_composer_async_container > div > div:nth-child(2) > div > div');
+            },
             [$this, 'retrievePostsByYearLink']
         );
     }

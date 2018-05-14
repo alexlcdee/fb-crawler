@@ -48,8 +48,6 @@ class Friends
      */
     private function retrieveFriends($friendsUrl = '', $nextPage = 1)
     {
-//        sleep(mt_rand(5, 15));
-
         $friendsUrl = $friendsUrl ? $friendsUrl : new Uri('/friends/center/friends/');
 
         $response = $this->client->request('GET', $friendsUrl);
@@ -76,32 +74,34 @@ class Friends
      */
     private function parseFriends(Crawler $page)
     {
-        return $page->filter('a.bm')->each(function (Crawler $node) {
-            parse_str((new Uri($node->attr('href')))->getQuery(), $friendUriQuery);
+        return $page->filter('#friends_center_main > div')
+            ->eq(1)
+            ->filter('a')
+            ->each(function (Crawler $node) {
+                parse_str((new Uri($node->attr('href')))->getQuery(), $friendUriQuery);
 
-//            sleep(mt_rand(3, 5));
-            $response = $this->client->request('GET', $node->attr('href'));
-            $crawler = new Crawler($response->getBody()->getContents());
+                $response = $this->client->request('GET', $node->attr('href'));
+                $crawler = new Crawler($response->getBody()->getContents());
 
-            $link = $crawler->filter('.bg a');
-            $url = $link->count() ? $link->first()->attr('href') : '';
+                $link = $crawler->filter('.bg a');
+                $url = $link->count() ? $link->first()->attr('href') : '';
 
-            $image = $crawler->filter('img.ba');
-            $photo = $image->count() ? $image->first()->attr('src') : '';
+                $image = $crawler->filter('img.ba');
+                $photo = $image->count() ? $image->first()->attr('src') : '';
 
-            $url = new Uri($url);
-            $userUrl = $url->getPath();
-            if ($url->getPath() === '/profile.php') {
-                parse_str($url->getQuery(), $queryParams);
-                $userUrl = (new Uri($url->getPath()))->withQuery('id=' . $queryParams['id']);
-            }
+                $url = new Uri($url);
+                $userUrl = $url->getPath();
+                if ($url->getPath() === '/profile.php') {
+                    parse_str($url->getQuery(), $queryParams);
+                    $userUrl = (new Uri($url->getPath()))->withQuery('id=' . $queryParams['id']);
+                }
 
-            return [
-                'id'      => $friendUriQuery['uid'],
-                'name'    => $node->text(),
-                'userUrl' => (string)$userUrl,
-                'photo'   => $photo,
-            ];
-        });
+                return [
+                    'id'      => $friendUriQuery['uid'],
+                    'name'    => $node->text(),
+                    'userUrl' => (string)$userUrl,
+                    'photo'   => $photo,
+                ];
+            });
     }
 }

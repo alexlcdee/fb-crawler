@@ -77,14 +77,17 @@ class Parser
                 'index' => 'tracker',
                 'type'  => 'friend',
                 'id'    => $friend->getId(),
-                'body'  => $friend->jsonSerialize() + ['loaded' => false],
+                'body'  => $friend->jsonSerialize() + [
+                        'loaded'      => false,
+                        'clientLogin' => $params['login'],
+                    ],
             ]);
 
             $message = new AMQPMessage(json_encode([
                 'action' => 'posts',
                 'params' => $params + [
                         'userUrl' => $friend->getUserUrl(),
-                        'userIr'  => $friend->getId(),
+                        'userId'  => $friend->getId(),
                     ],
             ]), ['content_type' => 'application/json', 'delivery_mode' => AMQPMessage::DELIVERY_MODE_PERSISTENT]);
             $this->AMQPChannel->basic_publish($message, 'app');
@@ -108,15 +111,25 @@ class Parser
                 'index' => 'tracker',
                 'type'  => 'post',
                 'id'    => sha1(json_encode($post)),
-                'body'  => $post,
+                'body'  => [
+                        'userId'      => $params['userId'],
+                        'clientLogin' => $params['login'],
+                    ] + $post->jsonSerialize(),
             ]);
         }
 
         $this->elasticClient->update([
-            'index'  => 'tracker',
-            'type'   => 'friend',
-            'id'     => $params['userId'],
-            'loaded' => true,
+            'index' => 'tracker',
+            'type'  => 'friend',
+            'id'    => $params['userId'],
+            'body'  => [
+                'doc' => [
+                    'loaded' => true,
+                ],
+            ],
         ]);
+
+        $postsCount = count($posts);
+        echo "Total posts found: {$postsCount}\n";
     }
 }
