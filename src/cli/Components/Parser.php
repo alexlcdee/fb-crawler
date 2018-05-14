@@ -77,13 +77,14 @@ class Parser
                 'index' => 'tracker',
                 'type'  => 'friend',
                 'id'    => $friend->getId(),
-                'body'  => $friend,
+                'body'  => $friend->jsonSerialize() + ['loaded' => false],
             ]);
 
             $message = new AMQPMessage(json_encode([
                 'action' => 'posts',
                 'params' => $params + [
                         'userUrl' => $friend->getUserUrl(),
+                        'userIr'  => $friend->getId(),
                     ],
             ]), ['content_type' => 'application/json', 'delivery_mode' => AMQPMessage::DELIVERY_MODE_PERSISTENT]);
             $this->AMQPChannel->basic_publish($message, 'app');
@@ -110,5 +111,12 @@ class Parser
                 'body'  => $post,
             ]);
         }
+
+        $this->elasticClient->update([
+            'index'  => 'tracker',
+            'type'   => 'friend',
+            'id'     => $params['userId'],
+            'loaded' => true,
+        ]);
     }
 }
