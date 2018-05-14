@@ -47,7 +47,7 @@ $elasticClient = \Elasticsearch\ClientBuilder::fromConfig([
 ]);
 
 $parser = new \App\cli\Components\Parser($elasticClient, $guzzleClient, $channel);
-// php src/cli/producer.php '{"action":"friends", "params":{"login":"lcdee@yandex.ru","password":"x1jm4jd1w"}}'
+
 $channel->basic_consume(
     $queue,
     'parser',
