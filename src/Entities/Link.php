@@ -9,13 +9,13 @@ use Psr\Http\Message\UriInterface;
 class Link implements \JsonSerializable
 {
     /**
-     * @var string
+     * @var Uri
      */
     private $url;
 
     public function __construct(string $url)
     {
-        $this->url = $url;
+        $this->url = new Uri($url);
     }
 
     public static function fromFacebookUri(UriInterface $uri)
@@ -29,6 +29,11 @@ class Link implements \JsonSerializable
         return new static((string)$userUrl);
     }
 
+    public function equals(Link $link)
+    {
+        return $this->__toString() === $link->__toString();
+    }
+
     /**
      * Specify data which should be serialized to JSON
      * @link http://php.net/manual/en/jsonserializable.jsonserialize.php
@@ -38,7 +43,7 @@ class Link implements \JsonSerializable
      */
     public function jsonSerialize()
     {
-        return $this->__toString();
+        return (string)$this;
     }
 
     public function __toString()

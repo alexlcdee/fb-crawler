@@ -6,7 +6,7 @@ namespace App\Entities;
 class Comment implements \JsonSerializable
 {
     /**
-     * @var string
+     * @var Link
      */
     private $authorLink;
     /**
@@ -18,7 +18,7 @@ class Comment implements \JsonSerializable
      */
     private $comment;
 
-    public function __construct(string $authorLink, string $authorName, string $comment)
+    public function __construct(Link $authorLink, string $authorName, string $comment)
     {
         $this->authorLink = $authorLink;
         $this->authorName = $authorName;
@@ -27,13 +27,17 @@ class Comment implements \JsonSerializable
 
     public static function fromArray(array $data)
     {
-        return new static($data['authorLink'], $data['authorName'], $data['comment']);
+        return new static(
+            new Link($data['authorLink']),
+            $data['authorName'],
+            $data['comment']
+        );
     }
 
     /**
-     * @return string
+     * @return Link
      */
-    public function getAuthorLink(): string
+    public function getAuthorLink(): Link
     {
         return $this->authorLink;
     }

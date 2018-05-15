@@ -6,7 +6,7 @@ namespace App\Entities;
 class Post implements \JsonSerializable
 {
     /**
-     * @var string
+     * @var Link
      */
     private $authorLink;
     /**
@@ -26,9 +26,8 @@ class Post implements \JsonSerializable
      */
     private $likes;
 
-    public function __construct(string $authorLink, string $authorName, string $content, array $comments, array $likes)
+    public function __construct(Link $authorLink, string $authorName, string $content, array $comments, array $likes)
     {
-
         $this->authorLink = $authorLink;
         $this->authorName = $authorName;
         $this->content = $content;
@@ -39,7 +38,7 @@ class Post implements \JsonSerializable
     public static function fromArray(array $data)
     {
         return new static(
-            $data['authorLink'],
+            new Link($data['authorLink']),
             $data['authorName'],
             $data['content'],
             array_map(function ($comment) {
@@ -52,9 +51,9 @@ class Post implements \JsonSerializable
     }
 
     /**
-     * @return string
+     * @return Link
      */
-    public function getAuthorLink(): string
+    public function getAuthorLink(): Link
     {
         return $this->authorLink;
     }
