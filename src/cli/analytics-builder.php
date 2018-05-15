@@ -19,7 +19,7 @@ while (!$connected) {
 
 $channel = $connection->channel();
 
-$queue = 'parser';
+$queue = 'analytics';
 $exchange = 'app';
 
 $channel->queue_declare($queue, false, true, false, false);
@@ -38,7 +38,7 @@ $builder = new \App\cli\Components\AnalyticsBuilder($elasticClient);
 
 $channel->basic_consume(
     $queue,
-    'parser',
+    'analytics',
     false,
     false,
     false,
@@ -55,7 +55,6 @@ $channel->basic_consume(
                 $channel->basic_cancel($message->delivery_info['consumer_tag']);
             } else {
                 $builder->build($data['login']);
-//                $parser->parse($data['action'], $data['params']);
                 $channel->basic_ack($message->delivery_info['delivery_tag']);
             }
         } else {

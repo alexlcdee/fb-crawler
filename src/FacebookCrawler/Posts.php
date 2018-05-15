@@ -108,9 +108,14 @@ class Posts
         $posts = $postFilter($page)->each(function (Crawler $node) {
             $authorNode = $node->filter('table h3 a');
             $authorUrl = new Uri($authorNode->first()->attr('href'));
+            $authorLink = $authorUrl->getPath();
+            if ($authorLink === '/profile.php') {
+                parse_str($authorUrl->getQuery(), $queryParams);
+                $authorLink = (new Uri($authorUrl->getPath()))->withQuery('id=' . $queryParams['id']);
+            }
 
             return [
-                'authorLink' => $authorUrl->getPath(),
+                'authorLink' => (string)$authorLink,
                 'authorName' => $authorNode->first()->text(),
                 'content'    => $node->filter("div > div")->eq(2)->text(),
                 'reactions'  => $this->crawlReactions($node),

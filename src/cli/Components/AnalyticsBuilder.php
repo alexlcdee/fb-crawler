@@ -27,13 +27,12 @@ class AnalyticsBuilder
                     'bool' => [
                         'must' => [
                             ['match' => ['clientLogin' => $login]],
-//                            ['match' => ['userId' => $userId]]
                         ],
                     ],
                 ],
             ],
         ]);
 
-        var_dump($response);
+        var_dump($response['hits']['total']);
     }
 }
