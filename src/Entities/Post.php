@@ -42,8 +42,12 @@ class Post implements \JsonSerializable
             $data['authorLink'],
             $data['authorName'],
             $data['content'],
-            $data['comments'],
-            $data['likes']
+            array_map(function ($comment) {
+                return Comment::fromArray($comment);
+            }, $data['comments']),
+            array_map(function ($like) {
+                return Like::fromArray($like);
+            }, $data['likes'])
         );
     }
 

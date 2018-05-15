@@ -4,6 +4,7 @@ namespace App\FacebookCrawler;
 
 
 use App\Entities\Friend;
+use App\Entities\Link;
 use GuzzleHttp\ClientInterface;
 use GuzzleHttp\Psr7\Uri;
 use Symfony\Component\DomCrawler\Crawler;
@@ -89,12 +90,7 @@ class Friends
                 $image = $crawler->filter('img.ba');
                 $photo = $image->count() ? $image->first()->attr('src') : '';
 
-                $url = new Uri($url);
-                $userUrl = $url->getPath();
-                if ($url->getPath() === '/profile.php') {
-                    parse_str($url->getQuery(), $queryParams);
-                    $userUrl = (new Uri($url->getPath()))->withQuery('id=' . $queryParams['id']);
-                }
+                $userUrl = Link::fromFacebookUri(new Uri($url));
 
                 return [
                     'id'      => $friendUriQuery['uid'],

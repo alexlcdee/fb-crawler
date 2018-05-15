@@ -3,6 +3,7 @@
 namespace App\cli\Components;
 
 
+use App\Entities\Post;
 use Elasticsearch\Client as ElasticClient;
 
 class AnalyticsBuilder
@@ -20,19 +21,34 @@ class AnalyticsBuilder
     public function build($login)
     {
         $response = $this->elasticClient->search([
-            'index' => 'tracker',
-            'type'  => 'post',
-            'body'  => [
+            'scroll' => '30s',
+            'size'   => 50,
+            'index'  => 'tracker',
+            'type'   => 'post',
+            'body'   => [
                 'query' => [
                     'bool' => [
                         'must' => [
                             ['match' => ['clientLogin' => $login]],
+                            ['match' => ['authorLink' => '/alexlcdee']],
                         ],
                     ],
                 ],
             ],
         ]);
 
-        var_dump($response['hits']['total']);
+        $data = [];
+
+        while (isset($response['hits']['hits']) && count($response['hits']['hits']) > 0) {
+            array_push($data, ...$response['hits']['hits']);
+            $response = $this->elasticClient->scroll([
+                'scroll_id' => $response['_scroll_id'],
+                'scroll'    => '30s',
+            ]);
+        }
+
+        var_dump(array_map(function ($definition) {
+            return Post::fromArray($definition['_source']);
+        }, $data));
     }
 }

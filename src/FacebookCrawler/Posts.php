@@ -3,8 +3,7 @@
 namespace App\FacebookCrawler;
 
 
-use App\Entities\Comment;
-use App\Entities\Like;
+use App\Entities\Link;
 use App\Entities\Post;
 use GuzzleHttp\ClientInterface;
 use GuzzleHttp\Exception\GuzzleException;
@@ -54,19 +53,8 @@ class Posts
                 'authorLink' => $post['authorLink'],
                 'authorName' => $post['authorName'],
                 'content'    => $post['content'],
-                'comments'   => array_map(function ($comment) {
-                    return Comment::fromArray([
-                        'authorLink' => $comment['userUrl'],
-                        'authorName' => $comment['userName'],
-                        'comment'    => $comment['comment'],
-                    ]);
-                }, $post['reactions']['comments']),
-                'likes'      => array_map(function ($like) {
-                    return Like::fromArray([
-                        'userUrl'  => $like['userUrl'],
-                        'userName' => $like['name'],
-                    ]);
-                }, $post['reactions']['likes']),
+                'comments'   => $post['reactions']['comments'],
+                'likes'      => $post['reactions']['likes'],
             ]);
         }, array_filter($posts));
     }
@@ -107,12 +95,7 @@ class Posts
 
         $posts = $postFilter($page)->each(function (Crawler $node) {
             $authorNode = $node->filter('table h3 a');
-            $authorUrl = new Uri($authorNode->first()->attr('href'));
-            $authorLink = $authorUrl->getPath();
-            if ($authorLink === '/profile.php') {
-                parse_str($authorUrl->getQuery(), $queryParams);
-                $authorLink = (new Uri($authorUrl->getPath()))->withQuery('id=' . $queryParams['id']);
-            }
+            $authorLink = Link::fromFacebookUri(new Uri($authorNode->first()->attr('href')));
 
             return [
                 'authorLink' => (string)$authorLink,
@@ -191,18 +174,13 @@ class Posts
 
                 $userUrl = '';
                 if ($nameNode->count()) {
-                    $url = new Uri($nameNode->attr('href'));
-                    $userUrl = $url->getPath();
-                    if ($url->getPath() === '/profile.php') {
-                        parse_str($url->getQuery(), $queryParams);
-                        $userUrl = (new Uri($url->getPath()))->withQuery('id=' . $queryParams['id']);
-                    }
+                    $userUrl = Link::fromFacebookUri(new Uri($nameNode->attr('href')));
                 }
 
                 return [
-                    'userName' => $nameNode->count() ? $nameNode->text() : '',
-                    'userUrl'  => (string)$userUrl,
-                    'comment'  => $textNode->count() ? $textNode->text() : '',
+                    'authorName' => $nameNode->count() ? $nameNode->text() : '',
+                    'authorLink' => (string)$userUrl,
+                    'comment'    => $textNode->count() ? $textNode->text() : '',
                 ];
             });
     }
@@ -228,16 +206,11 @@ class Posts
             $reactionsPage = new Crawler($body);
 
             return $reactionsPage->filter('h3 a')->each(function (Crawler $reaction) {
-                $url = new Uri($reaction->attr('href'));
-                $userUrl = $url->getPath();
-                if ($url->getPath() === '/profile.php') {
-                    parse_str($url->getQuery(), $queryParams);
-                    $userUrl = (new Uri($url->getPath()))->withQuery('id=' . $queryParams['id']);
-                }
+                $userUrl = Link::fromFacebookUri(new Uri($reaction->attr('href')));
 
                 return [
-                    'userUrl' => $userUrl,
-                    'name'    => $reaction->text(),
+                    'userUrl'  => (string)$userUrl,
+                    'userName' => $reaction->text(),
                 ];
             });
         }
