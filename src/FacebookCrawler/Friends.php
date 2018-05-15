@@ -93,10 +93,11 @@ class Friends
                 $userUrl = Link::fromFacebookUri(new Uri($url));
 
                 return [
-                    'id'      => $friendUriQuery['uid'],
-                    'name'    => $node->text(),
-                    'userUrl' => (string)$userUrl,
-                    'photo'   => $photo,
+                    'id'          => $friendUriQuery['uid'],
+                    'clientLogin' => $this->authenticator->getLogin(),
+                    'name'        => $node->text(),
+                    'userUrl'     => (string)$userUrl,
+                    'photo'       => $photo,
                 ];
             });
     }

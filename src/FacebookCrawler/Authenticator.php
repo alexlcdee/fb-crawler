@@ -3,7 +3,9 @@
 namespace App\FacebookCrawler;
 
 
+use App\Entities\Link;
 use GuzzleHttp\ClientInterface;
+use GuzzleHttp\Psr7\Uri;
 use Symfony\Component\DomCrawler\Crawler;
 
 class Authenticator
@@ -23,6 +25,10 @@ class Authenticator
      */
     private $password;
 
+    private $clientLink = null;
+
+    private $clientName = null;
+
     public function __construct(ClientInterface $client, string $login, string $password)
     {
         $this->client = $client;
@@ -41,6 +47,7 @@ class Authenticator
             $responseBody = $guzzleResponse->getBody()->getContents();
             if (!$this->hasLoginForm($responseBody)) {
                 $this->isAuthenticated = true;
+                $this->loadClientData();
 
                 return true;
             }
@@ -55,8 +62,10 @@ class Authenticator
                     ],
             ]);
 
-            if (!$this->hasLoginForm($response->getBody()->getContents())) {
+            $responseBody = $response->getBody()->getContents();
+            if (!$this->hasLoginForm($responseBody)) {
                 $this->isAuthenticated = true;
+                $this->loadClientData();
 
                 return true;
             }
@@ -89,5 +98,49 @@ class Authenticator
     private function hasLoginForm(string $responseBody)
     {
         return (new Crawler($responseBody))->filter('#login_form')->count();
+    }
+
+    public function getLogin()
+    {
+        return $this->login;
+    }
+
+    public function getClientLink()
+    {
+        if (!$this->clientLink) {
+            $this->loadClientData();
+        }
+
+        return $this->clientLink;
+    }
+
+    public function getClientName()
+    {
+        if (!$this->clientName) {
+            $this->loadClientData();
+        }
+
+        return $this->clientName;
+    }
+
+    /**
+     * @throws \GuzzleHttp\Exception\GuzzleException
+     */
+    private function loadClientData()
+    {
+        if (!$this->authenticate()) {
+            throw new NotAuthenticatedException('Not authenticated!');
+        }
+
+        $guzzleResponse = $this->client->request('GET', '/');
+        $responseBody = $guzzleResponse->getBody()->getContents();
+        $crawler = new Crawler($responseBody);
+
+        $userLinkNode = $crawler->filter('#mbasic_inline_feed_composer > form > table a');
+        if ($userLinkNode->count()) {
+            $userLink = $userLinkNode->first();
+            $this->clientLink = Link::fromFacebookUri(new Uri($userLink->attr('href')));
+            $this->clientName = $userLink->filter('img')->first()->attr('alt');
+        }
     }
 }

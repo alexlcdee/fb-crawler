@@ -21,18 +21,23 @@ class Friend implements \JsonSerializable
      * @var string
      */
     private $photo;
+    /**
+     * @var string
+     */
+    private $clientLogin;
 
-    public function __construct(string $id, string $name, string $userUrl, string $photo)
+    public function __construct(string $id, string $clientLogin, string $name, string $userUrl, string $photo)
     {
         $this->id = $id;
         $this->name = $name;
         $this->userUrl = $userUrl;
         $this->photo = $photo;
+        $this->clientLogin = $clientLogin;
     }
 
     public static function fromArray(array $data)
     {
-        return new static($data['id'], $data['name'], $data['userUrl'], $data['photo']);
+        return new static($data['id'], $data['clientLogin'], $data['name'], $data['userUrl'], $data['photo']);
     }
 
     /**
@@ -77,10 +82,11 @@ class Friend implements \JsonSerializable
     public function jsonSerialize()
     {
         return [
-            'id'      => $this->id,
-            'name'    => $this->name,
-            'userUrl' => $this->userUrl,
-            'photo'   => $this->photo,
+            'id'          => $this->id,
+            'clientLogin' => $this->clientLogin,
+            'name'        => $this->name,
+            'userUrl'     => $this->userUrl,
+            'photo'       => $this->photo,
         ];
     }
 }

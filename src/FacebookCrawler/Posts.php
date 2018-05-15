@@ -48,8 +48,9 @@ class Posts
             }
         }
 
-        return array_map(function (array $post) {
+        return array_map(function (array $post) use ($userUrl) {
             return Post::fromArray([
+                'feedOwner'  => $userUrl,
                 'authorLink' => $post['authorLink'],
                 'authorName' => $post['authorName'],
                 'content'    => $post['content'],

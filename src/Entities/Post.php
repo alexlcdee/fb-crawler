@@ -25,19 +25,31 @@ class Post implements \JsonSerializable
      * @var array
      */
     private $likes;
+    /**
+     * @var string
+     */
+    private $feedOwner;
 
-    public function __construct(Link $authorLink, string $authorName, string $content, array $comments, array $likes)
-    {
+    public function __construct(
+        string $feedOwner,
+        Link $authorLink,
+        string $authorName,
+        string $content,
+        array $comments,
+        array $likes
+    ) {
         $this->authorLink = $authorLink;
         $this->authorName = $authorName;
         $this->content = $content;
         $this->comments = $comments;
         $this->likes = $likes;
+        $this->feedOwner = $feedOwner;
     }
 
     public static function fromArray(array $data)
     {
         return new static(
+            $data['feedOwner'],
             new Link($data['authorLink']),
             $data['authorName'],
             $data['content'],
@@ -100,7 +112,8 @@ class Post implements \JsonSerializable
     public function jsonSerialize()
     {
         return [
-            'authorLink' => $this->authorLink,
+            'feedOwner'  => $this->feedOwner,
+            'authorLink' => (string)$this->authorLink,
             'authorName' => $this->authorName,
             'content'    => $this->content,
             'comments'   => $this->comments,

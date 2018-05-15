@@ -29,9 +29,9 @@ class Link implements \JsonSerializable
         return new static((string)$userUrl);
     }
 
-    public function equals(Link $link)
+    public function equals($link)
     {
-        return $this->__toString() === $link->__toString();
+        return $this->__toString() === (string)$link;
     }
 
     /**
