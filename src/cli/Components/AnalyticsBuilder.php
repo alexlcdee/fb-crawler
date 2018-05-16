@@ -3,9 +3,8 @@
 namespace App\cli\Components;
 
 
-use App\Entities\Comment;
+use App\Entities\Analytics;
 use App\Entities\Friend;
-use App\Entities\Like;
 use App\Entities\Post;
 use Elasticsearch\Client as ElasticClient;
 
@@ -25,45 +24,27 @@ class AnalyticsBuilder
     {
         $friends = $this->getFriends($login);
 
-        $analytics = array_reduce($friends, function (array $carry, Friend $friend) use ($clientLink) {
+        $analytics = array_map(function (Friend $friend) use ($clientLink) {
             $posts = $this->getPosts($friend->getUserUrl(), $clientLink);
-            $reactedPosts = array_reduce($posts, function (array $carry, Post $post) use ($friend) {
-                $hasLike = array_reduce($post->getLikes(), function ($value, Like $like) use ($friend) {
-                    if ($friend->getUserUrl() === $like->getUserUrl()) {
-                        $value = true;
-                    }
 
-                    return $value;
-                }, false);
+            return new Analytics($friend, $posts);
+        }, $friends);
 
-                $hasComment = array_reduce($post->getComments(), function ($value, Comment $comment) use ($friend) {
-                    if ($friend->getUserUrl() === $comment->getAuthorLink()) {
-                        $value = true;
-                    }
+        array_map(function (Analytics $analytics) {
+            $name = $analytics->getFriend()->getName();
+            $isBot = $analytics->isBot();
+            echo sprintf(
+                "%s: %s\n",
+                $name,
+                $isBot ? 'Possibly BOT!' : 'Possibly not bot'
+            );
 
-                    return $value;
-                }, false);
+            return [
+                'name'  => $analytics->getFriend()->getName(),
+                'isBot' => $analytics->isBot(),
+            ];
+        }, $analytics);
 
-                array_push($carry, [
-                    'post'        => $post,
-                    'hasReaction' => $hasLike || $hasComment,
-                ]);
-
-                return $carry;
-            }, []);
-            array_push($carry, [
-                'friend'           => $friend,
-                'totalClientPosts' => count($posts),
-                'posts'            => $reactedPosts,
-                'isBot'            => count($posts) <= count(array_filter($reactedPosts, function ($postDefinition) {
-                        return $postDefinition['hasReaction'];
-                    })),
-            ]);
-
-            return $carry;
-        }, []);
-
-        var_dump($analytics);
     }
 
     private function getFriends($login)
@@ -79,7 +60,7 @@ class AnalyticsBuilder
                 'query' => [
                     'bool' => [
                         'must' => [
-                            ['match' => ['clientLogin' => $login]],
+                            ['term' => ['clientLogin' => $login]],
                         ],
                     ],
                 ],
@@ -102,7 +83,6 @@ class AnalyticsBuilder
     private function getPosts($friendUrl, $authorUrl)
     {
         $data = [];
-
         $response = $this->elasticClient->search([
             'scroll' => '30s',
             'size'   => 50,
@@ -112,8 +92,8 @@ class AnalyticsBuilder
                 'query' => [
                     'bool' => [
                         'must' => [
-                            ['match' => ['authorLink' => (string)$authorUrl]],
-                            ['match' => ['feedOwner' => (string)$friendUrl]],
+                            ['term' => ['authorLink' => (string)$authorUrl]],
+                            ['term' => ['feedOwner' => (string)$friendUrl]],
                         ],
                     ],
                 ],

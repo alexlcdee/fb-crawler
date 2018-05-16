@@ -120,4 +120,25 @@ class Post implements \JsonSerializable
             'likes'      => $this->likes,
         ];
     }
+
+    public function hasReactionFrom(string $userUrl)
+    {
+        $hasLike = array_reduce($this->getLikes(), function ($value, Like $like) use ($userUrl) {
+            if ($userUrl === $like->getUserUrl()) {
+                $value = true;
+            }
+
+            return $value;
+        }, false);
+
+        $hasComment = array_reduce($this->getComments(), function ($value, Comment $comment) use ($userUrl) {
+            if ($userUrl === $comment->getAuthorLink()) {
+                $value = true;
+            }
+
+            return $value;
+        }, false);
+
+        return $hasLike || $hasComment;
+    }
 }

@@ -6,10 +6,17 @@ use PhpAmqpLib\Channel\AMQPChannel;
 use PhpAmqpLib\Connection\AMQPStreamConnection;
 use PhpAmqpLib\Message\AMQPMessage;
 
+$elasticClient = \Elasticsearch\ClientBuilder::fromConfig([
+    'hosts' => [
+        'elastic:9200',
+    ],
+]);
+
 $connected = false;
 while (!$connected) {
     try {
         $connection = new AMQPStreamConnection('rabbit', 5672, 'guest', 'guest');
+        $elasticClient->nodes()->info();
         $connected = true;
     } catch (Throwable $exception) {
         echo "Waiting for connection...\n";
@@ -40,11 +47,30 @@ $guzzleClient = new \GuzzleHttp\Client([
     ],
 ]);
 
-$elasticClient = \Elasticsearch\ClientBuilder::fromConfig([
-    'hosts' => [
-        'elastic:9200',
-    ],
-]);
+try {
+    $elasticClient->indices()->create([
+        'index' => 'tracker',
+        'body'  => [
+            'mappings' => [
+                'friend' => [
+                    'properties' => [
+                        'clientLogin' => ['type' => 'keyword'],
+                        'name'        => ['type' => 'keyword'],
+                        'userUrl'     => ['type' => 'keyword'],
+                    ],
+                ],
+                'post'   => [
+                    'properties' => [
+                        'feedOwner'  => ['type' => 'keyword'],
+                        'authorLink' => ['type' => 'keyword'],
+                        'authorName' => ['type' => 'keyword'],
+                    ],
+                ],
+            ],
+        ],
+    ]);
+} catch (Throwable $exception) {
+}
 
 $parser = new \App\cli\Components\Parser($elasticClient, $guzzleClient, $channel);
 
@@ -66,8 +92,15 @@ $channel->basic_consume(
             if ($data['action'] === 'quit') {
                 $channel->basic_cancel($message->delivery_info['consumer_tag']);
             } else {
-                $parser->parse($data['action'], $data['params']);
-                $channel->basic_ack($message->delivery_info['delivery_tag']);
+                try {
+                    $parser->parse($data['action'], $data['params']);
+                    $channel->basic_ack($message->delivery_info['delivery_tag']);
+                } catch (\App\FacebookCrawler\NotAuthenticatedException $exception) {
+                    echo $exception->getMessage(), "\n";
+                    $channel->basic_ack($message->delivery_info['delivery_tag']);
+                } catch (Throwable $exception) {
+                    echo $exception->getMessage(), "\n";
+                }
             }
         } else {
             $channel->basic_ack($message->delivery_info['delivery_tag']);
