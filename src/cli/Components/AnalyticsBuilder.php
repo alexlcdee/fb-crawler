@@ -31,12 +31,11 @@ class AnalyticsBuilder
         }, $friends);
 
         array_map(function (Analytics $analytics) {
-            $name = $analytics->getFriend()->getName();
-            $isBot = $analytics->isBot();
             echo sprintf(
-                "%s: %s\n",
-                $name,
-                $isBot ? 'Possibly BOT!' : 'Possibly not bot'
+                "%s (%s): %s\n",
+                $analytics->getFriend()->getName(),
+                'https://facebook.com' . $analytics->getFriend()->getUserUrl(),
+                $analytics->isBot() ? 'Possibly BOT!' : 'Possibly not bot'
             );
 
             return [

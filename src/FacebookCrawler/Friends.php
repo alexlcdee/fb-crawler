@@ -7,6 +7,8 @@ use App\Entities\Friend;
 use App\Entities\Link;
 use GuzzleHttp\ClientInterface;
 use GuzzleHttp\Psr7\Uri;
+use Psr\Log\LoggerInterface;
+use Psr\Log\NullLogger;
 use Symfony\Component\DomCrawler\Crawler;
 
 class Friends
@@ -20,10 +22,21 @@ class Friends
      */
     private $authenticator;
 
+    /**
+     * @var LoggerInterface
+     */
+    private $logger;
+
     public function __construct(ClientInterface $client, Authenticator $authenticator)
     {
         $this->client = $client;
         $this->authenticator = $authenticator;
+        $this->logger = new NullLogger();
+    }
+
+    public function setLogger(LoggerInterface $logger)
+    {
+        $this->logger = $logger;
     }
 
     /**
@@ -50,6 +63,8 @@ class Friends
     private function retrieveFriends($friendsUrl = '', $nextPage = 1)
     {
         $friendsUrl = $friendsUrl ? $friendsUrl : new Uri('/friends/center/friends/');
+
+        $this->logger->info('Load friend list: ' . $friendsUrl);
 
         $response = $this->client->request('GET', $friendsUrl);
 
@@ -80,6 +95,8 @@ class Friends
             ->filter('a')
             ->each(function (Crawler $node) {
                 parse_str((new Uri($node->attr('href')))->getQuery(), $friendUriQuery);
+
+                $this->logger->info('Retrieve friend info: ' . $node->attr('href'));
 
                 $response = $this->client->request('GET', $node->attr('href'));
                 $crawler = new Crawler($response->getBody()->getContents());

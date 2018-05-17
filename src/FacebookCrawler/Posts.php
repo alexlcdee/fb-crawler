@@ -8,6 +8,8 @@ use App\Entities\Post;
 use GuzzleHttp\ClientInterface;
 use GuzzleHttp\Exception\GuzzleException;
 use GuzzleHttp\Psr7\Uri;
+use Psr\Log\LoggerInterface;
+use Psr\Log\NullLogger;
 use Symfony\Component\DomCrawler\Crawler;
 
 class Posts
@@ -20,11 +22,21 @@ class Posts
      * @var Authenticator
      */
     private $authenticator;
+    /**
+     * @var LoggerInterface
+     */
+    private $logger;
 
     public function __construct(ClientInterface $client, Authenticator $authenticator)
     {
         $this->client = $client;
         $this->authenticator = $authenticator;
+        $this->logger = new NullLogger();
+    }
+
+    public function setLogger(LoggerInterface $logger)
+    {
+        $this->logger = $logger;
     }
 
     /**
@@ -67,6 +79,8 @@ class Posts
      */
     private function retrieveRecentPosts($url)
     {
+        $this->logger->info('Retrieve recent posts: ' . $url);
+
         return $this->retrievePosts(
             $url,
             function (Crawler $page) {
@@ -89,6 +103,8 @@ class Posts
         } catch (GuzzleException $exception) {
             return [];
         }
+
+        $this->logger->info('Retrieve posts by url: ' . $url);
 
         $body = $response->getBody()->getContents();
 
@@ -126,13 +142,14 @@ class Posts
     {
         $comments = [];
         $likes = [];
-        $reactionsContainer = $postNode->filter('.dt, .co, .cu, .cv, .cg, .bq, .cg');
+        $reactionsContainer = $postNode->filter('div:nth-child(2)');
         $commentPageLink = $reactionsContainer->filter('a')->reduce(function (Crawler $node) {
             return stripos($node->text(), 'comment') !== false;
         });
         if ($commentPageLink->count()) {
             $url = $commentPageLink->attr('href');
             try {
+                $this->logger->info('Retrieve reactions page: ' . $url);
                 $response = $this->client->request('GET', $url);
             } catch (GuzzleException $exception) {
                 return [
@@ -227,6 +244,7 @@ class Posts
     private function retrieveYearLinks($userUrl)
     {
         try {
+            $this->logger->info('Retrieve year links: ' . $userUrl);
             $response = $this->client->request('GET', $userUrl);
         } catch (GuzzleException $exception) {
             return [];
@@ -252,6 +270,8 @@ class Posts
      */
     private function retrievePostsByYearLink($url)
     {
+        $this->logger->info('Retrieve posts by year link: ' . $url);
+
         return $this->retrievePosts(
             $url,
             function (Crawler $page) {

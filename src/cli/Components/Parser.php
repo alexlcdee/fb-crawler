@@ -10,6 +10,8 @@ use Elasticsearch\Client as ElasticClient;
 use GuzzleHttp\ClientInterface;
 use PhpAmqpLib\Channel\AMQPChannel;
 use PhpAmqpLib\Message\AMQPMessage;
+use Psr\Log\LoggerInterface;
+use Psr\Log\NullLogger;
 
 class Parser
 {
@@ -25,12 +27,22 @@ class Parser
      * @var AMQPChannel
      */
     private $AMQPChannel;
+    /**
+     * @var LoggerInterface
+     */
+    private $logger;
 
     public function __construct(ElasticClient $elasticClient, ClientInterface $guzzleClient, AMQPChannel $AMQPChannel)
     {
         $this->elasticClient = $elasticClient;
         $this->guzzleClient = $guzzleClient;
         $this->AMQPChannel = $AMQPChannel;
+        $this->logger = new NullLogger();
+    }
+
+    public function setLogger(LoggerInterface $logger)
+    {
+        $this->logger = $logger;
     }
 
     /**
@@ -52,7 +64,7 @@ class Parser
             default:
                 throw new \InvalidArgumentException('$section must be either "friends" or "posts"');
         }
-        echo "Parsing done!\n";
+        $this->logger->info('Action done!');
     }
 
     private function createAuthenticator($login, $password)
@@ -67,12 +79,14 @@ class Parser
      */
     private function parseFriends(Authenticator $authenticator, array $params)
     {
-        echo "Load friends list for user {$params['login']}...\n";
+        $this->logger->info("Load friends list for user {$params['login']}...");
         $parser = new Friends($this->guzzleClient, $authenticator);
+        $parser->setLogger($this->logger);
+
         $friends = $parser->getFriendsList();
+        $this->logger->info("Friend list for user {$params['login']} loaded!");
 
         foreach ($friends as $friend) {
-            echo "Put friend into storage\n";
             $this->elasticClient->index([
                 'index' => 'tracker',
                 'type'  => 'friend',
@@ -101,12 +115,14 @@ class Parser
      */
     private function parsePosts(Authenticator $authenticator, array $params)
     {
-        echo "Load posts for link: {$params['userUrl']}...\n";
+        $this->logger->info("Load posts for link {$params['userUrl']}...");
         $parser = new Posts($this->guzzleClient, $authenticator);
+        $parser->setLogger($this->logger);
+
         $posts = $parser->getPosts($params['userUrl']);
+        $this->logger->info("Posts list for link {$params['userUrl']} loaded!");
 
         foreach ($posts as $post) {
-            echo "Put post into storage\n";
             $this->elasticClient->index([
                 'index' => 'tracker',
                 'type'  => 'post',
@@ -130,6 +146,6 @@ class Parser
         ]);
 
         $postsCount = count($posts);
-        echo "Total posts found: {$postsCount}\n";
+        $this->logger->info("Total posts found: {$postsCount}");
     }
 }
