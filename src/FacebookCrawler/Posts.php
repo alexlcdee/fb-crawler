@@ -110,7 +110,53 @@ class Posts
 
         $page = new Crawler($body);
 
-        $posts = $postFilter($page)->each(function (Crawler $node) {
+        $posts = $this->parsePosts($postFilter, $page);
+
+        $nextPage = $page->filter('#structured_composer_async_container > .g > a');
+        if ($nextPage->count() && stripos($nextPage->first()->text(), 'Show more') !== false) {
+            $nextPosts = $next($nextPage->first()->attr('href'));
+            if (count($nextPosts)) {
+                if (is_numeric(array_keys($nextPosts)[0])) {
+                    foreach ($nextPosts as $postsOuter) {
+                        array_push($posts, ...$postsOuter);
+                    }
+                } else {
+                    array_push($posts, ...$nextPosts);
+                }
+            }
+        }
+
+        $result = [];
+        foreach ($posts as $post) {
+            if (is_numeric(array_keys($post)[0])) {
+                $postsOuter = $post;
+                foreach ($postsOuter as $post) {
+                    $result[] = $post;
+                }
+            } else {
+                $result[] = $post;
+            }
+        }
+
+        return $result;
+    }
+
+    private function parsePosts(callable $postFilter, Crawler $page, bool $parseBDayPosts = true)
+    {
+        return $postFilter($page)->each(function (Crawler $node) use ($parseBDayPosts) {
+            $bDaySubstoryLink = $node->children()->last()->filter('a')->reduce(function (Crawler $node) {
+                return stripos($node->attr('href'), 'substories') !== false &&
+                    stripos($node->attr('href'), 'cursor') !== false;
+            });
+
+            if ($bDaySubstoryLink->count() && $parseBDayPosts) {
+                $uri = new Uri($bDaySubstoryLink->attr('href'));
+                parse_str($uri->getQuery(), $queryParams);
+                unset($queryParams['cursor']);
+
+                return $this->parseBDaySubstory($uri->withQuery(http_build_query($queryParams)));
+            }
+
             $authorNode = $node->filter('table h3 a');
             $authorLink = Link::fromFacebookUri(new Uri($authorNode->first()->attr('href')));
 
@@ -121,10 +167,38 @@ class Posts
                 'reactions'  => $this->crawlReactions($node),
             ];
         });
+    }
 
-        $nextPage = $page->filter('#structured_composer_async_container > .g > a');
-        if ($nextPage->count() && stripos($nextPage->first()->text(), 'Show more') !== false) {
-            $nextPosts = $next($nextPage->first()->attr('href'));
+    /**
+     * @param Uri $uri
+     * @return array
+     * @throws GuzzleException
+     */
+    private function parseBDaySubstory(Uri $uri)
+    {
+        $this->logger->info('Parse Birthday Substory: ' . $uri);
+        $guzzleResponse = $this->client->request('GET', $uri);
+        $body = $guzzleResponse->getBody()->getContents();
+
+        $page = new Crawler($body);
+
+        $posts = $this->parsePosts(function (Crawler $node) {
+            return $node
+                ->filter('#root > table > tbody > tr > td > div > div > div > div')
+                ->reduce(function (Crawler $node) {
+                    return $node->filter('table h3 a')->count() > 0;
+                });
+        }, $page, false);
+
+        $bDaySubstoryLink = $page
+            ->filter('#root > table > tbody > tr > td > div > div > div > div a')
+            ->reduce(function (Crawler $node) {
+                return stripos($node->attr('href'), 'substories') !== false &&
+                    stripos($node->attr('href'), 'cursor') !== false;
+            });
+
+        if ($bDaySubstoryLink->count()) {
+            $nextPosts = $this->parseBDaySubstory(new Uri($bDaySubstoryLink->attr('href')));
             if (count($nextPosts)) {
                 array_push($posts, ...$nextPosts);
             }
@@ -144,7 +218,8 @@ class Posts
         $likes = [];
         $reactionsContainer = $postNode->filter('div:nth-child(2)');
         $commentPageLink = $reactionsContainer->filter('a')->reduce(function (Crawler $node) {
-            return stripos($node->text(), 'comment') !== false;
+            return stripos($node->text(), 'comment') !== false ||
+                mb_stripos($node->text(), 'комментарий') !== false;
         });
         if ($commentPageLink->count()) {
             $url = $commentPageLink->attr('href');
