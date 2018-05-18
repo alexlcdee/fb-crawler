@@ -132,7 +132,7 @@ class Post implements \JsonSerializable
         }, false);
 
         $hasComment = array_reduce($this->getComments(), function ($value, Comment $comment) use ($userUrl) {
-            if ($userUrl === $comment->getAuthorLink()) {
+            if ($comment->getAuthorLink()->equals($userUrl)) {
                 $value = true;
             }
 
